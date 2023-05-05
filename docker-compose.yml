@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: git@github.com:riytxu/bot-chatGPT.git#main
+      ssh: ["default"]
+    env_file:
+      - .env
+    restart: "always"
