@@ -2,6 +2,7 @@ const dotenv = require("dotenv");
 const { Telegraf } = require("telegraf");
 const { answerOpenai, pictureOpenai } = require("./openai.js");
 const cron = require("node-cron")
+console.log(process.env.TIME_WAKE_UP)
 
 dotenv.config();
 const bot = new Telegraf(process.env.TOKEN_TG);
@@ -27,7 +28,7 @@ const wakeUpChat = () => {
   });
 }
 
-cron.schedule('0 0 7 * * 0-5', () => wakeUpChat(), {
+cron.schedule(process.env.TIME_WAKE_UP, () => wakeUpChat(), {
   timezone: "Asia/Vladivostok"
 })
 
