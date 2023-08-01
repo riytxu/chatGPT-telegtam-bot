@@ -1,9 +1,11 @@
 const dotenv = require("dotenv");
 const { Telegraf } = require("telegraf");
 const { answerOpenai, pictureOpenai } = require("./openai.js");
+const cron = require("node-cron")
 
 dotenv.config();
 const bot = new Telegraf(process.env.TOKEN_TG);
+const chatId = Number(process.env.CHAT_ID)
 
 const getMsg = (ctx) => {
   const regex = /^\/([^@\s]+)@?(?:(\S+)|)\s?([\s\S]+)?$/i;
@@ -13,6 +15,21 @@ const getMsg = (ctx) => {
 const filterText = (message) => {
   return message.replace(/\s+/g, " ");
 };
+
+const wakeUpChat = () => {
+  setTimeout(async () => {
+    try {
+      const response = await answerOpenai(`Расскажи анекдот под номером: ${Date.now()}`);
+      bot.telegram.sendMessage(chatId, response)
+    } catch (err) {
+      bot.telegram.sendMessage(chatId, `У меня тут ошибочка => ${err.message}`)
+    }
+  });
+}
+
+cron.schedule('0 0 7 * * 0-5', () => wakeUpChat(), {
+  timezone: "Asia/Vladivostok"
+})
 
 bot.start((ctx) => {
   ctx.reply(
