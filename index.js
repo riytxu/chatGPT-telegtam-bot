@@ -2,11 +2,13 @@ const dotenv = require("dotenv");
 const { Telegraf } = require("telegraf");
 const { answerOpenai, pictureOpenai } = require("./openai.js");
 const cron = require("node-cron")
-console.log(process.env.TIME_WAKE_UP)
+const axios = require('axios');
+const iconv = require('iconv-lite');
 
 dotenv.config();
 const bot = new Telegraf(process.env.TOKEN_TG);
 const chatId = Number(process.env.CHAT_ID)
+const jokeQuery = process.env.JOKE_QUERY
 
 const getMsg = (ctx) => {
   const regex = /^\/([^@\s]+)@?(?:(\S+)|)\s?([\s\S]+)?$/i;
@@ -17,18 +19,25 @@ const filterText = (message) => {
   return message.replace(/\s+/g, " ");
 };
 
-const wakeUpChat = () => {
-  setTimeout(async () => {
-    try {
-      const response = await answerOpenai(`Расскажи анекдот под номером: ${Date.now()}`);
-      bot.telegram.sendMessage(chatId, response)
-    } catch (err) {
-      bot.telegram.sendMessage(chatId, `У меня тут ошибочка => ${err.message}`)
-    }
-  });
-}
+const getJoke = async () => {
+  const jokeResponse = await axios.get('http://rzhunemogu.ru/RandJSON.aspx?CType=1', {
+    responseType: 'arraybuffer',
+    responseEncoding: 'binary'
+  })
+  const jokeDecode = iconv.decode(Buffer.from(jokeResponse.data), 'windows-1251')
+  const jokeFilter = jokeDecode.slice(jokeDecode.indexOf(':') + 1, jokeDecode.indexOf('"}')).replace('"', '')
+  const AiResponse = await answerOpenai(jokeQuery + jokeFilter);
+  return jokeFilter + AiResponse
+};
 
-cron.schedule(process.env.TIME_WAKE_UP, () => wakeUpChat(), {
+cron.schedule(process.env.TIME_WAKE_UP, async () => {
+  try {
+    const joke = await getJoke()
+    bot.telegram.sendMessage(chatId, joke)
+  } catch (err) {
+    bot.telegram.sendMessage(chatId, err.message)
+  }
+}, {
   timezone: "Asia/Vladivostok"
 })
 
@@ -94,5 +103,16 @@ bot.command("image", (ctx) => {
     });
   }
 });
+
+bot.command("joke", (ctx) => {
+  setTimeout(async () => {
+    try {
+      const joke = await getJoke()
+      ctx.reply(joke)
+    } catch (err) {
+      ctx.reply(`У меня тут ошибочка => ${err.message}`);
+    }
+  })
+})
 
 bot.launch();
